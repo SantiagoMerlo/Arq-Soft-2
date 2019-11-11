@@ -23,6 +23,7 @@ public class TarjetaDto {
     }
 
     public TarjetaDto(Long id, String numero, Double saldo, Set<Transaccion> transaciones, Usuario usuario) {
+        super();
         this.id = id;
         this.numero = numero;
         this.saldo = saldo;
