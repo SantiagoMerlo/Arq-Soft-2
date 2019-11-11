@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Repository
 public class TransaccionDaoImp extends DaoGenericoImp<Transaccion,Long> implements TransaccionDao{
 
     public List<Transaccion> getTransaccion(Operacion operacion) {
