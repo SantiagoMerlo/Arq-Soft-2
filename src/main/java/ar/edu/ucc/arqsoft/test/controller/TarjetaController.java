@@ -37,7 +37,7 @@ public class TarjetaController {
 
        TarjetaDto creado = servicio.crearTarjeta(dto);
 
-        return new ResponseEntity(creado, HttpStatus.OK);
+        return new ResponseEntity(creado, HttpStatus.CREATED);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -50,7 +50,7 @@ public class TarjetaController {
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    @RequestMapping(value = "/tarjetas/{id}/transaciones", method = RequestMethod.POST, produces = "application/json")
+    @RequestMapping(value = "/tarjetas/{id}/transaciones", method = RequestMethod.GET, produces = "application/json")
     public ResponseEntity<?> mostrarTransaciones(@PathVariable("id") Long id) throws Exception {
 
         Set<TransaccionDto> dto  = servicio.mostrarTransaciones(id);
