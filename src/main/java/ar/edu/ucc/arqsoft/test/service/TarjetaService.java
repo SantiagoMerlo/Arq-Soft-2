@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.apache.log4j.Logger;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
@@ -38,6 +39,7 @@ public class TarjetaService {
             return dto;
 
         } else {
+
             Tarjeta tarjeta = new Tarjeta();
 
             tarjeta.setNumero(dto.getNumero());
@@ -65,11 +67,37 @@ public class TarjetaService {
             return new TarjetaDto(id,t.getNumero(),t.getSaldo(), t.getTransacciones(), t.getUsuario());
         }
     }
+    /*
+    @Funcion template que guarda la transaccion y actualiza el monto de la tarjeta
+     */
+    void transaccionar(Tarjeta tarjeta, Double monto){
 
-    //Podemos devolver el saldo --> CREDITO
+        Date fecha = Calendar.getInstance().getTime();
+
+        Transaccion transaccion = new Transaccion();
+        transaccion.setFecha(fecha);
+        transaccion.setMonto(monto);
+        transaccion.setTarjeta(tarjeta);
+        if(Operacion.CREDITO == transaccion.getOperacion()){
+            transaccion.setOperacion(Operacion.CREDITO);
+            tarjeta.setSaldo(monto);
+        } else {
+            transaccion.setOperacion(Operacion.DEBITO);
+            tarjeta.setSaldo(monto);
+        }
+        transaccionDao.insert(transaccion);
+
+        Set<Transaccion> transaciones = tarjeta.getTransacciones();
+        transaciones.add(transaccion);
+
+        tarjeta.setTransacciones(transaciones);
+        dao.update(tarjeta);
+
+    }
+
     public ResponseAutorizacionDto cargarSaldo(RequestAutorizacionDto dto){
 
-        //final String uri = "https://iua-service.herokuapp.com/autorizar";
+        final String uri = "https://iua-service.herokuapp.com/autorizar";
 
         Tarjeta tarjeta = dao.load(dto.getTarjeta().getNumber());
 
@@ -77,79 +105,37 @@ public class TarjetaService {
 
             log.info("no existe la tarjeta");
             return new ResponseAutorizacionDto(dto.getTarjeta().getNumber().toString(),"ERROR","2");
-            //return  new ResponseAutorizacionDto(uri, dto, RequestAutorizacionDto.class);
 
         } else {
 
-            Date fecha = Calendar.getInstance().getTime();
-
-            Transaccion transaccion = new Transaccion();
-            transaccion.setFecha(fecha);
-            transaccion.setMonto(dto.getMonto());
-            transaccion.setTarjeta(tarjeta);
-            transaccion.setOperacion(Operacion.CREDITO);
-            transaccionDao.insert(transaccion);
-
-            Set<Transaccion> transaciones = tarjeta.getTransacciones();
-            transaciones.add(transaccion);
-
-            tarjeta.setSaldo(dto.getMonto() + tarjeta.getSaldo());
-
-            tarjeta.setTransacciones(transaciones);
-
-            dao.update(tarjeta);
-
-            return new ResponseAutorizacionDto(dto.getTarjeta().getNumber().toString(),"OK","1");
-            //return  new ResponseAutorizacionDto(uri, dto, RequestAutorizacionDto.class);
+            transaccionar(tarjeta,dto.getMonto()+tarjeta.getSaldo());
+            return new RestTemplate().postForObject(uri,dto,ResponseAutorizacionDto.class);
 
         }
 
     }
-
-    //Podemos devolver el saldo --> DEBITO
+    
     public ResponseAutorizacionDto descontarSaldo(RequestAutorizacionDto dto){
 
-        //final String uri = "https://iua-service.herokuapp.com/autorizar";
 
         Tarjeta tarjeta = dao.load(dto.getTarjeta().getNumber());
         if(tarjeta == null){
 
             log.info("no existe la tarjeta");
-
             return new ResponseAutorizacionDto(dto.getTarjeta().getNumber().toString(),"RECHAZADA","2");
-            //return  new ResponseAutorizacionDto(uri, dto, RequestAutorizacionDto.class);
-
 
         } else {
 
             Double saldo = tarjeta.getSaldo() - dto.getMonto();
 
             if (saldo > 0) {
-                Date fecha = Calendar.getInstance().getTime();
 
-                Transaccion transaccion = new Transaccion();
-
-                transaccion.setFecha(fecha);
-                transaccion.setMonto(saldo);
-                transaccion.setTarjeta(tarjeta);
-                transaccion.setOperacion(Operacion.DEBITO);
-                transaccionDao.insert(transaccion);
-
-                Set<Transaccion> transaciones = tarjeta.getTransacciones();
-                transaciones.add(transaccion);
-
-                tarjeta.setSaldo(saldo);
-
-                tarjeta.setTransacciones(transaciones);
-
-                dao.update(tarjeta);
+                transaccionar(tarjeta,saldo);
                 return new ResponseAutorizacionDto(dto.getTarjeta().getNumber().toString(),"APROBADO","2");
-                //return  new ResponseAutorizacionDto(uri, dto, RequestAutorizacionDto.class);
 
             }else{
                 log.info("La tarjeta no tiene saldo suficiente");
                 return new ResponseAutorizacionDto(dto.getTarjeta().getNumber().toString(),"RECHAZADA","2");
-                //return  new ResponseAutorizacionDto(uri, dto, RequestAutorizacionDto.class);
 
             }
         }
@@ -175,3 +161,4 @@ public class TarjetaService {
 
 
 }
+
